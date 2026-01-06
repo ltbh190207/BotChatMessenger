@@ -1,0 +1,4 @@
+cd botchat
+npm start
+
+

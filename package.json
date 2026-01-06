@@ -1,0 +1,33 @@
+{
+  "name": "botchat",
+  "version": "1.0.0",
+  "description": "Bot chat Messenger sử dụng module @dongdev/fca-unofficial",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "messenger",
+    "facebook-bot",
+    "fca-unofficial",
+    "chatbot"
+  ],
+  "author": "GPT",
+  "license": "ISC",
+  "dependencies": {
+    "@dongdev/fca-unofficial": "^1.0.0",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "axios": "^1.12.2",
+    "canvas": "^3.2.0",
+    "fs-extra": "^11.3.2",
+    "moment-duration-format": "^2.3.2",
+    "python3": "^0.0.1",
+    "tinyurl": "^1.1.7"
+  },
+  "devDependencies": {
+    "eslint": "^9.37.0",
+    "nodemon": "^3.1.0"
+  }
+}

@@ -1,0 +1,20 @@
+{
+    "100013726992007": {
+        "name": "Huy Lê",
+        "userID": "100013726992007",
+        "balance": 1095000,
+        "registeredIn": {
+            "threadName": "Group ID: 1587768408852582",
+            "threadID": "1587768408852582"
+        }
+    },
+    "100028651510197": {
+        "name": "Minh Nguyễn",
+        "userID": "100028651510197",
+        "balance": 100000,
+        "registeredIn": {
+            "threadName": "Group ID: 2705684849767699",
+            "threadID": "2705684849767699"
+        }
+    }
+}

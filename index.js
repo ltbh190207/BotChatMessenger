@@ -1,5 +1,5 @@
 ﻿// ===============================
-// 🧠 BOT FACEBOOK - MAIN INDEX
+// 🧠 BOT FACEBOOK - MAIN INDEX (FIXED)
 // ===============================
 const login = require("@dongdev/fca-unofficial");
 const fs = require("fs");
@@ -17,75 +17,25 @@ console.log(chalk.blue(`
  ╚═════╝ ╚═╝        ╚═╝     ╚═════╝ ╚══════╝  ╚═══╝
 `));
 
-// === CẤU HÌNH TỪ CONFIG ===
+// === Cấu hình ===
 const appStatePath = path.join(__dirname, "appstate.json");
-const RESTART_DELAY_MS = config.connection.restartDelay;
-const KEEPALIVE_INTERVAL = config.connection.keepAliveInterval;
-const MQTT_TIMEOUT = config.connection.mqttTimeout;
+const RESTART_DELAY_MS = 10000;
+const KEEPALIVE_INTERVAL = 5 * 60 * 1000; // 5 phút
+const MQTT_TIMEOUT = 10 * 60 * 1000; // 10 phút
 
 // Biến theo dõi trạng thái
 let lastMessageTime = Date.now();
 let keepAliveTimer = null;
 let connectionCheckTimer = null;
-let isShuttingDown = false;
-
-// --- HÀM LOGGER CUSTOM ---
-function log(type, message, data = null) {
-    if (!config.logging.enableConsoleLog) return;
-
-    const timestamp = new Date().toLocaleString('vi-VN');
-    const prefix = `[${timestamp}]`;
-
-    switch (type) {
-        case 'info':
-            console.log(chalk.cyan(prefix), message, data || '');
-            break;
-        case 'success':
-            console.log(chalk.green(prefix), message, data || '');
-            break;
-        case 'warn':
-            console.log(chalk.yellow(prefix), message, data || '');
-            break;
-        case 'error':
-            console.error(chalk.red(prefix), message, data || '');
-            break;
-        case 'debug':
-            if (config.logging.logLevel === 'debug') {
-                console.log(chalk.gray(prefix), message, data || '');
-            }
-            break;
-    }
-}
-
-// --- HÀM CLEAR TIMERS ---
-function clearAllTimers() {
-    if (keepAliveTimer) {
-        clearInterval(keepAliveTimer);
-        keepAliveTimer = null;
-    }
-    if (connectionCheckTimer) {
-        clearInterval(connectionCheckTimer);
-        connectionCheckTimer = null;
-    }
-}
 
 // --- HÀM KHỞI ĐỘNG CHÍNH ---
 function startBot() {
-    if (isShuttingDown) return;
-
-    log('info', "🔄 Đang kiểm tra và khởi động bot...");
-
-    // Kiểm tra chế độ bảo trì
-    if (config.security.maintenanceMode) {
-        log('warn', "⚠️ Bot đang trong chế độ bảo trì!");
-        return;
-    }
+    console.log(chalk.yellow("🔄 Đang kiểm tra và khởi động bot..."));
 
     if (!fs.existsSync(appStatePath)) {
-        log('error', "⚠️ Không tìm thấy file appstate.json!");
+        console.log(chalk.red("⚠️ Không tìm thấy file appstate.json! Vui lòng tạo file này trước."));
         process.exit(1);
     }
-
     const appState = JSON.parse(fs.readFileSync(appStatePath, "utf8"));
 
     global.client = { handleReply: [], handleReaction: [] };
@@ -102,17 +52,9 @@ function startBot() {
         try {
             const rawData = fs.readFileSync(prefixesPath, "utf8");
             if (rawData) threadData = new Map(Object.entries(JSON.parse(rawData)));
-        } catch (e) {
-            log('error', "❌ Không thể tải dữ liệu prefix:", e.message);
-        }
+        } catch (e) { console.log(chalk.red("❌ Không thể tải dữ liệu prefix:", e)); }
     }
-
-    global.data = {
-        threadData,
-        userData: new Map(),
-        userNameCache: new Map(),
-        threadInfoCache: new Map()
-    };
+    global.data = { threadData, userData: new Map(), userNameCache: new Map(), threadInfoCache: new Map() };
 
     global.commands = new Map();
     global.events = new Map();
@@ -123,9 +65,7 @@ function startBot() {
         event: path.join(__dirname, "modules/event"),
         noprefix: path.join(__dirname, "modules/noprefix")
     };
-
-    log('info', "🔄 Đang tải các module...");
-
+    console.log(chalk.cyan("🔄 Đang tải các module..."));
     for (const type in modulePaths) {
         const modulePath = modulePaths[type];
         if (!fs.existsSync(modulePath)) continue;
@@ -139,77 +79,70 @@ function startBot() {
                 if (type === 'command') global.commands.set(name, module);
                 else if (type === 'event') global.events.set(name, module);
                 else if (type === 'noprefix') global.noprefix.set(name, module);
-            } catch (e) {
-                log('error', `❌ Lỗi khi tải module ${file}:`, e.message);
-            }
+            } catch (e) { console.log(chalk.red(`❌ Lỗi khi tải module ${file}:`), e); }
         }
     }
-
-    log('success', `✅ Đã tải ${global.commands.size} lệnh, ${global.events.size} sự kiện, ${global.noprefix.size} lệnh noprefix`);
+    console.log(chalk.green(`✅ Đã tải ${global.commands.size} lệnh, ${global.events.size} sự kiện, và ${global.noprefix.size} lệnh noprefix.`));
 
     login({ appState }, (err, api) => {
         if (err) {
-            log('error', "❌ Lỗi đăng nhập:", err);
+            console.error(chalk.red("❌ Lỗi đăng nhập:"), err);
             setTimeout(startBot, RESTART_DELAY_MS);
             return;
         }
 
         global.client.api = api;
-
-        // CẤU HÌNH API TỪ CONFIG
+        
+        // CẤU HÌNH API VỚI RECONNECT
         api.setOptions({
             listenEvents: true,
             selfListen: false,
             logLevel: "silent",
-            updatePresence: config.connection.updatePresence,
-            forceLogin: config.connection.forceLogin,
-            autoReconnect: config.connection.autoReconnect
+            updatePresence: true,
+            forceLogin: true,
+            autoReconnect: true // Bật tự động kết nối lại
         });
 
-        log('success', `\n🤖 Bot ${config.botName} đã đăng nhập thành công!`);
-        log('info', `📢 Prefix mặc định: ${config.prefix}`);
+        console.log(chalk.green(`\n🤖 Bot ${config.botName} đã đăng nhập thành công!`));
+        console.log(chalk.cyan(`📢 Prefix mặc định: ${config.prefix}`));
 
-        log('info', "🔄 Khởi động các module onLoad...");
+        console.log(chalk.cyan("🔄 Khởi động các module onLoad..."));
         for (const [name, module] of [...global.commands, ...global.events]) {
             if (module.onLoad && typeof module.onLoad === 'function') {
                 try {
                     module.onLoad({ api });
-                    log('debug', `  > onLoad của "${name}" đã chạy`);
+                    console.log(chalk.green(`  > onLoad của "${name}" đã chạy`));
                 } catch (e) {
-                    log('error', `  > Lỗi khi gọi onLoad của "${name}":`, e.message);
+                    console.error(chalk.red(`  > Lỗi khi gọi onLoad của "${name}":`), e.message);
                 }
             }
         }
-
-        log('success', "✅ Hoàn tất khởi động.\n");
-        log('info', "💬 Bot đang lắng nghe tin nhắn...\n");
+        console.log(chalk.cyan("✅ Hoàn tất khởi động.\n"));
+        console.log(chalk.gray("💬 Bot đang lắng nghe tin nhắn...\n"));
 
         // === CƠ CHẾ KEEP-ALIVE ===
         keepAliveTimer = setInterval(() => {
-            if (isShuttingDown) return;
-
             try {
+                // Gửi request đơn giản để giữ kết nối
                 api.getThreadList(1, null, ["INBOX"], (err) => {
                     if (err) {
-                        log('warn', "⚠️ Keep-alive check failed");
+                        console.log(chalk.yellow("⚠️ Keep-alive check failed, reconnecting..."));
                     } else {
-                        log('debug', `💓 Keep-alive: ${new Date().toLocaleTimeString()}`);
+                        console.log(chalk.gray(`💓 Keep-alive: ${new Date().toLocaleTimeString()}`));
                     }
                 });
             } catch (e) {
-                log('error', "❌ Keep-alive error:", e.message);
+                console.error(chalk.red("❌ Keep-alive error:"), e);
             }
         }, KEEPALIVE_INTERVAL);
 
         // === KIỂM TRA TIMEOUT ===
         connectionCheckTimer = setInterval(() => {
-            if (isShuttingDown) return;
-
             const timeSinceLastMessage = Date.now() - lastMessageTime;
             if (timeSinceLastMessage > MQTT_TIMEOUT) {
-                log('error', `❌ Không nhận tin nhắn trong ${MQTT_TIMEOUT / 60000} phút`);
-                log('warn', "🔄 Khởi động lại bot...");
-                clearAllTimers();
+                console.error(chalk.red(`❌ Không nhận tin nhắn trong ${MQTT_TIMEOUT/60000} phút. Khởi động lại...`));
+                clearInterval(keepAliveTimer);
+                clearInterval(connectionCheckTimer);
                 setTimeout(startBot, RESTART_DELAY_MS);
             }
         }, 60000); // Kiểm tra mỗi phút
@@ -223,15 +156,13 @@ function startBot() {
         // === LISTEN MQTT VỚI ERROR HANDLING ===
         const listenMqtt = api.listenMqtt(async (err, event) => {
             if (err) {
-                log('error', "❌ MQTT Error:", err.error || err);
-
+                console.error(chalk.red("❌ MQTT Error:"), err);
+                
                 // Nếu lỗi nghiêm trọng, khởi động lại
-                if (err.error === "Connection closed." ||
-                    err.error === "Connection refused: Not authorized" ||
-                    err.error === "read ECONNRESET") {
-                    log('error', "❌ Mất kết nối MQTT nghiêm trọng");
-                    log('warn', `🔄 Khởi động lại sau ${RESTART_DELAY_MS / 1000} giây...`);
-                    clearAllTimers();
+                if (err.error === "Connection closed." || err.error === "Connection refused: Not authorized") {
+                    console.error(chalk.red("❌ Mất kết nối MQTT nghiêm trọng. Khởi động lại sau 10 giây..."));
+                    clearInterval(keepAliveTimer);
+                    clearInterval(connectionCheckTimer);
                     if (listenMqtt && typeof listenMqtt.stopListening === 'function') {
                         listenMqtt.stopListening();
                     }
@@ -239,7 +170,7 @@ function startBot() {
                 }
                 return;
             }
-
+            
             if (!event) return;
 
             // CẬP NHẬT THỜI GIAN NHẬN TIN NHẮN CUỐI
@@ -252,25 +183,15 @@ function startBot() {
                 await handleNoprefix({ api, event });
                 await listen({ api, event });
             } catch (e) {
-                log('error', "❌ Lỗi khi xử lý event:", e.message);
+                console.error(chalk.red("❌ Lỗi khi xử lý event:"), e);
             }
         });
 
         // === XỬ LÝ TÍN HIỆU THOÁT ===
         process.on('SIGINT', () => {
-            isShuttingDown = true;
-            log('warn', "\n👋 Đang tắt bot...");
-            clearAllTimers();
-            if (listenMqtt && typeof listenMqtt.stopListening === 'function') {
-                listenMqtt.stopListening();
-            }
-            process.exit(0);
-        });
-
-        process.on('SIGTERM', () => {
-            isShuttingDown = true;
-            log('warn', "\n👋 Nhận tín hiệu SIGTERM, đang tắt bot...");
-            clearAllTimers();
+            console.log(chalk.yellow("\n👋 Đang tắt bot..."));
+            clearInterval(keepAliveTimer);
+            clearInterval(connectionCheckTimer);
             if (listenMqtt && typeof listenMqtt.stopListening === 'function') {
                 listenMqtt.stopListening();
             }
@@ -281,13 +202,12 @@ function startBot() {
 
 // Xử lý lỗi chưa được bắt
 process.on('unhandledRejection', (reason, promise) => {
-    log('error', '❌ Unhandled Rejection:', reason);
+    console.error(chalk.red('❌ Unhandled Rejection at:'), promise, 'reason:', reason);
 });
 
 process.on('uncaughtException', (error) => {
-    log('error', '❌ Uncaught Exception:', error.message);
-    log('warn', '🔄 Khởi động lại bot sau 5 giây...');
-    clearAllTimers();
+    console.error(chalk.red('❌ Uncaught Exception:'), error);
+    console.log(chalk.yellow('🔄 Khởi động lại bot sau 5 giây...'));
     setTimeout(startBot, 5000);
 });
 

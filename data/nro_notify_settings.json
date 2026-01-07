@@ -1,0 +1,18 @@
+{
+    "2705684849767699": {
+        "enabled": true,
+        "server": "1 sao",
+        "notifyTypes": [
+            "all"
+        ],
+        "interval": 30
+    },
+    "6912038252211365": {
+        "enabled": true,
+        "server": "1 sao",
+        "notifyTypes": [
+            "divine_item"
+        ],
+        "interval": 30
+    }
+}
